@@ -13,6 +13,8 @@ struct QueryEditorView: View {
     @Environment(TabManager.self) private var tabManager
     @Environment(\.modelContext) private var modelContext
     @State private var viewModel: QueryEditorViewModel?
+    @State private var explainViewModel: ExplainPlanViewModel?
+    @State private var showExplainSheet: Bool = false
 
     /// Check if the current query (for this saved query) is executing
     private var isCurrentQueryExecuting: Bool {
@@ -49,6 +51,7 @@ struct QueryEditorView: View {
                 tabManager.activeTab?.cancelQuery()
                 appState.query.cancelCurrentQuery()
             },
+            onExplainQuery: { runExplain() },
             completionsDataSource: { @MainActor in
                 SQLCompletionDataSource(
                     schemas: appState.connection.schemas,
@@ -62,6 +65,18 @@ struct QueryEditorView: View {
                 tabManager: tabManager,
                 modelContext: modelContext
             )
+            if explainViewModel == nil {
+                explainViewModel = ExplainPlanViewModel(
+                    service: ExplainPlanService(
+                        databaseService: appState.connection.databaseService
+                    )
+                )
+            }
+        }
+        .sheet(isPresented: $showExplainSheet) {
+            if let explainViewModel {
+                ExplainPlanSheet(viewModel: explainViewModel)
+            }
         }
         .alert("No Database Selected", isPresented: Binding(
             get: { viewModel?.showNoDatabaseAlert ?? false },
@@ -99,5 +114,12 @@ struct QueryEditorView: View {
         .onChange(of: appState.query.queryText) { _, newText in
             viewModel?.handleQueryTextChange(newText)
         }
+    }
+
+    private func runExplain() {
+        let sql = appState.query.queryText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !sql.isEmpty, let explainViewModel else { return }
+        showExplainSheet = true
+        Task { await explainViewModel.explain(sql: sql) }
     }
 }

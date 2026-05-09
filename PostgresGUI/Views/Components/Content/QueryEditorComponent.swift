@@ -21,6 +21,7 @@ struct QueryEditorComponent: View {
     // Callbacks
     let onRunQuery: () -> Void
     let onCancelQuery: () -> Void
+    var onExplainQuery: (() -> Void)?
 
     /// Optional closure providing the schema/tables snapshot used for SQL
     /// autocomplete. Read by SyntaxHighlightedEditor on demand.
@@ -55,6 +56,22 @@ struct QueryEditorComponent: View {
                     .clipShape(Circle())
                     .tint(.red)
                     .keyboardShortcut(.escape, modifiers: [])
+                }
+
+                if let onExplainQuery {
+                    Button(action: onExplainQuery) {
+                        Label {
+                            Text("Explain")
+                        } icon: {
+                            Image(systemName: "wand.and.stars")
+                        }
+                    }
+                    .buttonStyle(.glass)
+                    .clipShape(Capsule())
+                    .tint(.purple)
+                    .keyboardShortcut("e", modifiers: [.command, .shift])
+                    .disabled(isExecuting)
+                    .help("Run EXPLAIN ANALYZE on the current query (⇧⌘E)")
                 }
 
                 Spacer()
