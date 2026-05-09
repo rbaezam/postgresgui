@@ -178,8 +178,10 @@ enum SQLAutocompleteProvider {
         }
 
         let tableMatches = rank(candidates: tableCandidates, prefix: lowerPrefix)
-        let keywordMatches = rank(candidates: keywords, prefix: lowerPrefix)
+            .map(SQLIdentifierQuoting.quoteQualified)
         let schemaMatches = rank(candidates: context.schemas, prefix: lowerPrefix)
+            .map(SQLIdentifierQuoting.quoteIfNeeded)
+        let keywordMatches = rank(candidates: keywords, prefix: lowerPrefix)
 
         // Tables and schemas before keywords; keep insertion order within each bucket.
         return uniqued(tableMatches + schemaMatches + keywordMatches)
@@ -211,6 +213,7 @@ enum SQLAutocompleteProvider {
             }
         }
         return rank(candidates: columns, prefix: prefix.lowercased())
+            .map(SQLIdentifierQuoting.quoteIfNeeded)
     }
 
     private static func rankedTables(
@@ -223,6 +226,7 @@ enum SQLAutocompleteProvider {
             .filter { $0.schema.lowercased() == lowerSchema }
             .map { $0.name }
         return rank(candidates: names, prefix: prefix.lowercased())
+            .map(SQLIdentifierQuoting.quoteIfNeeded)
     }
 
     /// Splits `candidates` into prefix matches first, then contains, both

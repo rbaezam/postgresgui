@@ -181,4 +181,61 @@ struct SQLAutocompleteProviderTests {
         let suggestions = SQLAutocompleteProvider.completions(for: ctx)
         #expect(suggestions.contains("users"))
     }
+
+    // MARK: - case-sensitive identifiers (Postgres folding)
+
+    private static func makeMixedCaseContext(text: String) -> SQLCompletionContext {
+        let usuarios = TableInfo(
+            name: "Usuarios",
+            schema: "public",
+            columnInfo: [
+                ColumnInfo(name: "id", dataType: "uuid"),
+                ColumnInfo(name: "Nombre", dataType: "text"),
+                ColumnInfo(name: "email", dataType: "text"),
+            ]
+        )
+        let events = TableInfo(
+            name: "Events",
+            schema: "Analytics",
+            columnInfo: [
+                ColumnInfo(name: "Event_Id", dataType: "uuid"),
+            ]
+        )
+        return SQLCompletionContext(
+            schemas: ["public", "Analytics"],
+            tables: [usuarios, events],
+            text: text,
+            cursorLocation: text.utf16.count
+        )
+    }
+
+    @Test func quotesTableWithUppercaseInBarePrefix() {
+        let ctx = Self.makeMixedCaseContext(text: "select * from usu")
+        let suggestions = SQLAutocompleteProvider.completions(for: ctx)
+        #expect(suggestions.contains("\"Usuarios\""))
+        #expect(!suggestions.contains("Usuarios"))
+    }
+
+    @Test func quotesColumnWithUppercaseAfterDot() {
+        let ctx = Self.makeMixedCaseContext(text: "select Usuarios.")
+        let suggestions = SQLAutocompleteProvider.completions(for: ctx)
+        #expect(suggestions.contains("\"Nombre\""))
+        #expect(suggestions.contains("id"))            // lowercase stays bare
+        #expect(suggestions.contains("email"))
+        #expect(!suggestions.contains("Nombre"))
+    }
+
+    @Test func quotesEachPartOfQualifiedTable() {
+        let ctx = Self.makeMixedCaseContext(text: "select * from analytic")
+        let suggestions = SQLAutocompleteProvider.completions(for: ctx)
+        // Either the qualified or bare form is fine, but mixed-case parts
+        // must come back individually quoted.
+        #expect(suggestions.contains("\"Analytics\".\"Events\""))
+    }
+
+    @Test func quotesTableInsideSchemaSuggestion() {
+        let ctx = Self.makeMixedCaseContext(text: "select * from Analytics.")
+        let suggestions = SQLAutocompleteProvider.completions(for: ctx)
+        #expect(suggestions == ["\"Events\""])
+    }
 }
