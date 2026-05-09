@@ -57,8 +57,8 @@ struct MainSplitView: View {
 
                     // Row 2: Queries list + Query editor
                     HSplitView {
-                        // Column 1: Saved queries list
-                        SavedQueriesSidebarSection(
+                        // Column 1: Saved queries / history panel
+                        QueriesPanel(
                             savedQueries: savedQueries,
                             folders: queryFolders,
                             selectedQueryIDs: $selectedQueryIDs
@@ -83,10 +83,12 @@ struct MainSplitView: View {
                         databaseService: appState.connection.databaseService,
                         queryState: appState.query
                     )
+                    let historyService = QueryHistoryService(modelContext: modelContext)
                     viewModel = DetailContentViewModel(
                         appState: appState,
                         rowOperations: rowOperations,
-                        queryService: queryService
+                        queryService: queryService,
+                        queryHistoryService: historyService
                     )
                 }
             }

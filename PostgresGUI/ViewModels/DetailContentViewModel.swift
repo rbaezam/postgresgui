@@ -19,6 +19,7 @@ class DetailContentViewModel {
     private let rowOperations: RowOperationsServiceProtocol
     private let queryService: QueryServiceProtocol
     private let tableMetadataService: TableMetadataServiceProtocol
+    private let queryHistoryService: QueryHistoryServiceProtocol?
 
     // MARK: - Modal State
 
@@ -70,12 +71,14 @@ class DetailContentViewModel {
         appState: AppState,
         rowOperations: RowOperationsServiceProtocol,
         queryService: QueryServiceProtocol,
-        tableMetadataService: TableMetadataServiceProtocol? = nil
+        tableMetadataService: TableMetadataServiceProtocol? = nil,
+        queryHistoryService: QueryHistoryServiceProtocol? = nil
     ) {
         self.appState = appState
         self.rowOperations = rowOperations
         self.queryService = queryService
         self.tableMetadataService = tableMetadataService ?? TableMetadataService()
+        self.queryHistoryService = queryHistoryService
     }
 
     // MARK: - Table Metadata Helpers
@@ -424,6 +427,13 @@ class DetailContentViewModel {
         let result = await queryService.executeQuery(
             appState.query.queryText,
             preferredColumnOrder: preferredColumnOrder
+        )
+
+        queryHistoryService?.record(
+            queryText: appState.query.queryText,
+            connectionId: appState.connection.currentConnection?.id,
+            databaseName: appState.connection.selectedDatabase?.name,
+            result: result
         )
 
         // Update state based on result

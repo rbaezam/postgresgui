@@ -18,6 +18,7 @@ class QueryEditorViewModel {
     private let tabManager: TabManager
     private let modelContext: ModelContext
     private let queryService: QueryServiceProtocol
+    private let queryHistoryService: QueryHistoryServiceProtocol
 
     // MARK: - State
 
@@ -34,7 +35,8 @@ class QueryEditorViewModel {
         appState: AppState,
         tabManager: TabManager,
         modelContext: ModelContext,
-        queryService: QueryServiceProtocol? = nil
+        queryService: QueryServiceProtocol? = nil,
+        queryHistoryService: QueryHistoryServiceProtocol? = nil
     ) {
         self.appState = appState
         self.tabManager = tabManager
@@ -43,6 +45,9 @@ class QueryEditorViewModel {
         self.queryService = queryService ?? QueryService(
             databaseService: appState.connection.databaseService,
             queryState: appState.query
+        )
+        self.queryHistoryService = queryHistoryService ?? QueryHistoryService(
+            modelContext: modelContext
         )
     }
 
@@ -122,6 +127,13 @@ class QueryEditorViewModel {
         let result = await queryService.executeQuery(
             queryText,
             preferredColumnOrder: preferredColumnOrder
+        )
+
+        queryHistoryService.record(
+            queryText: queryText,
+            connectionId: appState.connection.currentConnection?.id,
+            databaseName: database.name,
+            result: result
         )
 
         guard requestId == queryExecutionRequestId else {

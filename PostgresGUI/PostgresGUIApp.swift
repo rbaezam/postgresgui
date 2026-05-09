@@ -23,6 +23,7 @@ struct PostgresGUIApp: App {
             SavedQuery.self,
             QueryFolder.self,
             TabState.self,
+            QueryHistoryEntry.self,
         ])
 
         let modelConfiguration = ModelConfiguration(

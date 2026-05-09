@@ -62,6 +62,12 @@ enum Constants {
         static let lastConnectionId = "lastConnectionId"
         static let lastDatabaseName = "lastDatabaseName"
         static let queryResultsDateFormat = "queryResultsDateFormat"
+        static let queryHistoryEnabled = "queryHistoryEnabled"
+    }
+
+    // Query history
+    enum QueryHistory {
+        static let maxEntries: Int = 500
     }
 
     // Timeouts
