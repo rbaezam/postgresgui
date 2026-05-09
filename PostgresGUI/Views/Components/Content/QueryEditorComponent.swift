@@ -14,13 +14,17 @@ struct QueryEditorComponent: View {
     let statusMessage: String?
     let lastExecutedAt: Date?
     let displayedElapsedTime: TimeInterval
-    
+
     // Bindings
     @Binding var queryText: String
-    
+
     // Callbacks
     let onRunQuery: () -> Void
     let onCancelQuery: () -> Void
+
+    /// Optional closure providing the schema/tables snapshot used for SQL
+    /// autocomplete. Read by SyntaxHighlightedEditor on demand.
+    var completionsDataSource: (@MainActor () -> SQLCompletionDataSource)?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -62,7 +66,10 @@ struct QueryEditorComponent: View {
             .background(Color(NSColor.controlBackgroundColor))
 
             // Syntax highlighted editor
-            SyntaxHighlightedEditor(text: $queryText)
+            SyntaxHighlightedEditor(
+                text: $queryText,
+                completionsDataSource: completionsDataSource
+            )
         }
     }
 

@@ -163,6 +163,9 @@ private struct SQLSyntaxHighlighter {
 
 struct SyntaxHighlightedEditor: NSViewRepresentable {
     @Binding var text: String
+    /// Optional provider for SQL autocomplete. When `nil`, autocomplete is
+    /// disabled and the system default behaviour is preserved.
+    var completionsDataSource: (@MainActor () -> SQLCompletionDataSource)?
     @Environment(\.colorScheme) var colorScheme
 
     func makeNSView(context: Context) -> NSScrollView {
@@ -188,6 +191,9 @@ struct SyntaxHighlightedEditor: NSViewRepresentable {
         textView.isAutomaticDashSubstitutionEnabled = false
         textView.isAutomaticTextReplacementEnabled = false
         textView.isAutomaticSpellingCorrectionEnabled = false
+        // Auto-completion is driven manually via Coordinator.textDidChange so
+        // we can scope suggestions to the user's current schema/tables; leave
+        // the system flag off to suppress the OS auto-completion popup.
         textView.isAutomaticTextCompletionEnabled = false
         textView.isAutomaticDataDetectionEnabled = false
         textView.isAutomaticLinkDetectionEnabled = false
@@ -209,12 +215,17 @@ struct SyntaxHighlightedEditor: NSViewRepresentable {
         textView.delegate = context.coordinator
         context.coordinator.textView = textView
         context.coordinator.lineNumberRuler = lineNumberRuler
+        context.coordinator.completionsDataSource = completionsDataSource
 
         return scrollView
     }
 
     func updateNSView(_ nsView: NSScrollView, context: Context) {
         guard let textView = nsView.documentView as? NSTextView else { return }
+
+        // Keep the data source fresh; SwiftUI rebuilds the closure on each
+        // pass so it always reads the latest schemas/tables from AppState.
+        context.coordinator.completionsDataSource = completionsDataSource
 
         let isDark = colorScheme == .dark
         let colorSchemeChanged = context.coordinator.lastIsDark != isDark
@@ -239,11 +250,13 @@ struct SyntaxHighlightedEditor: NSViewRepresentable {
         private let parent: SyntaxHighlightedEditor
         private let highlighter = SQLSyntaxHighlighter()
         private var highlightingWorkItem: DispatchWorkItem?
+        private var completionWorkItem: DispatchWorkItem?
 
         weak var textView: NSTextView?
         weak var lineNumberRuler: LineNumberRulerView?
         var isUpdatingFromUserInput = false
         var lastIsDark = false
+        var completionsDataSource: (@MainActor () -> SQLCompletionDataSource)?
 
         init(parent: SyntaxHighlightedEditor) {
             self.parent = parent
@@ -267,6 +280,51 @@ struct SyntaxHighlightedEditor: NSViewRepresentable {
             }
             highlightingWorkItem = workItem
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15, execute: workItem)
+
+            scheduleAutocomplete()
+        }
+
+        // MARK: - Autocomplete
+
+        /// Debounced auto-trigger of NSTextView's completion popup.
+        /// Manual invocation (Esc/F5) bypasses this and goes straight to
+        /// `textView(_:completions:forPartialWordRange:indexOfSelectedItem:)`.
+        private func scheduleAutocomplete() {
+            completionWorkItem?.cancel()
+            guard completionsDataSource != nil else { return }
+
+            let work = DispatchWorkItem { [weak self] in
+                guard let self, let textView = self.textView else { return }
+                let cursor = textView.selectedRange().location
+                guard SQLAutocompleteProvider.shouldAutoTrigger(
+                    text: textView.string,
+                    cursorLocation: cursor
+                ) else { return }
+                textView.complete(nil)
+            }
+            completionWorkItem = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: work)
+        }
+
+        func textView(
+            _ textView: NSTextView,
+            completions words: [String],
+            forPartialWordRange charRange: NSRange,
+            indexOfSelectedItem index: UnsafeMutablePointer<Int>?
+        ) -> [String] {
+            guard let dataSource = completionsDataSource else { return words }
+
+            let cursor = charRange.location + charRange.length
+            let context = SQLCompletionContext(
+                dataSource: dataSource(),
+                text: textView.string,
+                cursorLocation: cursor
+            )
+            let suggestions = SQLAutocompleteProvider.completions(for: context)
+
+            // Pre-select the first item so Enter/Tab accepts the top match.
+            index?.pointee = suggestions.isEmpty ? -1 : 0
+            return suggestions.isEmpty ? words : suggestions
         }
 
         func applyHighlighting(to textView: NSTextView, isDark: Bool) {

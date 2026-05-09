@@ -48,6 +48,12 @@ struct QueryEditorView: View {
             onCancelQuery: {
                 tabManager.activeTab?.cancelQuery()
                 appState.query.cancelCurrentQuery()
+            },
+            completionsDataSource: { @MainActor in
+                SQLCompletionDataSource(
+                    schemas: appState.connection.schemas,
+                    tables: appState.connection.tables
+                )
             }
         )
         .onAppear {
