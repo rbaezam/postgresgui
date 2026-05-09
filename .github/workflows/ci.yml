@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Build & test
+    runs-on: macos-latest
+    timeout-minutes: 30
+    env:
+      # verify.sh disables code signing when CI=true.
+      CI: "true"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # The project deploys to macOS 26 (Liquid Glass APIs), so we need an
+      # Xcode that ships the macOS 26 SDK. Print what's available so failures
+      # are easy to diagnose if the runner image hasn't shipped Xcode 26 yet.
+      - name: List installed Xcodes
+        run: ls -1 /Applications | grep -i '^Xcode' || true
+
+      - name: Select Xcode (prefer 26.x)
+        run: |
+          set -euo pipefail
+          if ls /Applications/Xcode_26*.app >/dev/null 2>&1; then
+            XCODE_PATH="$(ls -d /Applications/Xcode_26*.app | sort -r | head -n1)"
+          else
+            XCODE_PATH="/Applications/Xcode.app"
+          fi
+          echo "Selecting $XCODE_PATH"
+          sudo xcode-select -s "$XCODE_PATH/Contents/Developer"
+          xcodebuild -version
+
+      - name: Resolve Swift packages
+        run: |
+          xcodebuild \
+            -project PostgresGUI.xcodeproj \
+            -scheme PostgresGUI \
+            -resolvePackageDependencies
+
+      - name: Run verify.sh
+        run: ./scripts/verify.sh
