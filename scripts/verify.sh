@@ -8,9 +8,13 @@
 #   - GitHub Actions workflow (.github/workflows/ci.yml).
 #
 # Usage:
-#   ./scripts/verify.sh                # build + tests
-#   ./scripts/verify.sh --build-only   # build only, skip tests
-#   ./scripts/verify.sh --tests-only   # tests only, skip standalone build
+#   ./scripts/verify.sh                      # build + tests
+#   ./scripts/verify.sh --build-only         # build only, skip tests
+#   ./scripts/verify.sh --tests-only         # tests only, skip standalone build
+#   ./scripts/verify.sh --build-for-testing  # build app + compile tests, no run
+#                                            # (used in CI when the runner OS is
+#                                            # older than the test target's
+#                                            # MACOSX_DEPLOYMENT_TARGET)
 #
 # Env vars:
 #   TEAM_ID   Apple Developer Team ID. Defaults to 87N6GJL5N5.
@@ -29,12 +33,14 @@ cd "$ROOT_DIR"
 
 RUN_BUILD=1
 RUN_TESTS=1
+BUILD_FOR_TESTING=0
 for arg in "$@"; do
   case "$arg" in
     --build-only) RUN_TESTS=0 ;;
     --tests-only) RUN_BUILD=0 ;;
+    --build-for-testing) BUILD_FOR_TESTING=1; RUN_TESTS=0 ;;
     -h|--help)
-      sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *) echo "unknown arg: $arg" >&2; exit 64 ;;
@@ -74,6 +80,17 @@ if [[ $RUN_BUILD -eq 1 ]]; then
     -destination "$DESTINATION" \
     "${SIGNING_ARGS[@]}" \
     build
+fi
+
+if [[ $BUILD_FOR_TESTING -eq 1 ]]; then
+  echo
+  echo "▸ Compiling tests (build-for-testing)…"
+  run_xcodebuild \
+    -project "$PROJECT" \
+    -scheme "$SCHEME" \
+    -destination "$DESTINATION" \
+    "${SIGNING_ARGS[@]}" \
+    build-for-testing
 fi
 
 if [[ $RUN_TESTS -eq 1 ]]; then

@@ -45,5 +45,9 @@ jobs:
             -scheme PostgresGUI \
             -resolvePackageDependencies
 
+      # macos-latest currently runs macOS 15. The app + tests deploy to
+      # macOS 26, so we cannot *run* tests here — but we can compile them,
+      # which catches every compile-time regression. Switch to plain
+      # `verify.sh` (no flag) once GitHub ships macOS 26 hosted runners.
       - name: Run verify.sh
-        run: ./scripts/verify.sh
+        run: ./scripts/verify.sh --build-for-testing
