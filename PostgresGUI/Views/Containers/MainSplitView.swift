@@ -19,6 +19,7 @@ struct MainSplitView: View {
     @State private var searchText: String = ""
     @State private var viewModel: DetailContentViewModel?
     @State private var selectedQueryIDs: Set<SavedQuery.ID> = []
+    @AppStorage("showRowInspector") private var showRowInspector: Bool = true
 
     var body: some View {
         @Bindable var appState = appState
@@ -31,47 +32,63 @@ struct MainSplitView: View {
                     max: Constants.ColumnWidth.sidebarMax
                 )
         } detail: {
-            VStack(spacing: 0) {
-                if tabManager.tabs.count > 1 {
-                    TabBarView()
-                }
+            HSplitView {
+                VStack(spacing: 0) {
+                    if tabManager.tabs.count > 1 {
+                        TabBarView()
+                    }
 
-                VSplitView {
-                    // Row 1: Query results
-                    VStack(spacing: 0) {
-                        if let viewModel = viewModel {
-                            QueryResultsView(
-                                searchText: searchText,
-                                onDeleteKeyPressed: {
-                                    viewModel.deleteSelectedRows()
-                                },
-                                onSpaceKeyPressed: {
-                                    viewModel.openJSONView()
-                                }
-                            )
-                        } else {
-                            QueryResultsView(searchText: searchText)
+                    VSplitView {
+                        // Row 1: Query results
+                        VStack(spacing: 0) {
+                            if let viewModel = viewModel {
+                                QueryResultsView(
+                                    searchText: searchText,
+                                    onDeleteKeyPressed: {
+                                        viewModel.deleteSelectedRows()
+                                    },
+                                    onSpaceKeyPressed: {
+                                        viewModel.openJSONView()
+                                    }
+                                )
+                            } else {
+                                QueryResultsView(searchText: searchText)
+                            }
                         }
-                    }
-                    .frame(minHeight: 300)
+                        .frame(minHeight: 300)
 
-                    // Row 2: Queries list + Query editor
-                    HSplitView {
-                        // Column 1: Saved queries / history panel
-                        QueriesPanel(
-                            savedQueries: savedQueries,
-                            folders: queryFolders,
-                            selectedQueryIDs: $selectedQueryIDs
-                        )
-                        .frame(minWidth: 200, maxWidth: 260)
+                        // Row 2: Queries list + Query editor
+                        HSplitView {
+                            // Column 1: Saved queries / history panel
+                            QueriesPanel(
+                                savedQueries: savedQueries,
+                                folders: queryFolders,
+                                selectedQueryIDs: $selectedQueryIDs
+                            )
+                            .frame(minWidth: 200, maxWidth: 260)
 
-                        // Column 2: Query editor
-                        QueryEditorView()
+                            // Column 2: Query editor
+                            QueryEditorView()
+                        }
+                        .frame(minHeight: 250)
                     }
-                    .frame(minHeight: 250)
+                }
+                .frame(minWidth: 400)
+
+                if showRowInspector {
+                    RowDetailsPanel()
+                        .frame(minWidth: 260, idealWidth: 320, maxWidth: 600)
                 }
             }
             .toolbar {
+                ToolbarItem(placement: .automatic) {
+                    Button {
+                        showRowInspector.toggle()
+                    } label: {
+                        Image(systemName: "sidebar.right")
+                    }
+                    .help(showRowInspector ? "Hide row inspector" : "Show row inspector")
+                }
                 if let viewModel = viewModel {
                     DetailContentToolbar(viewModel: viewModel)
                 }

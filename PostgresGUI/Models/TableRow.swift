@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct TableRow: Identifiable, Codable {
+struct TableRow: Identifiable, Codable, Equatable {
     let id: UUID
     let values: [String: String?]
 
