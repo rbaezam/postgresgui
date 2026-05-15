@@ -1,6 +1,6 @@
-# PostgresGUI - A native PostgreSQL client for macOS
+# Postgresso - A native PostgreSQL client for macOS
 
-![PostgresGUI screenshot in dark mode](https://github.com/PostgresGUI/website/blob/main/public/screenshots2/PostgresGUI%20-%20Dark%20mode.png?raw=true)
+![Postgresso screenshot in dark mode](https://github.com/PostgresGUI/website/blob/main/public/screenshots2/PostgresGUI%20-%20Dark%20mode.png?raw=true)
 
 [![Version](https://img.shields.io/badge/version-1.1.4-blue.svg)](https://postgresgui.com)
   [![Platform](https://img.shields.io/badge/platform-macOS%2026-lightgrey.svg)](https://www.apple.com/macos)
@@ -40,7 +40,7 @@ This app uses macOS Keychain to securely store database passwords. Keychain acce
 
 ## Acknowledgments
 
-PostgresGUI is built on the shoulders of giants. Special thanks to:
+Postgresso is built on the shoulders of giants. Special thanks to:
 
 - The [PostgresNIO](https://github.com/vapor/postgres-nio) team for the excellent PostgreSQL client library
 - The [Swift NIO](https://github.com/apple/swift-nio) project for the networking foundation
