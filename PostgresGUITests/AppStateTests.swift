@@ -160,7 +160,12 @@ struct AppStateTests {
 
     // MARK: - Race Condition Tests
 
-    @Suite("Query Race Conditions")
+    // Serialized: these tests rely on `Task.sleep` timing to coordinate
+    // supersession and debounce behavior. Running them in parallel with
+    // other timing-sensitive tests causes flakes when the scheduler is
+    // contended (#issue with race-condition tests passing in isolation
+    // but failing under full-suite load).
+    @Suite("Query Race Conditions", .serialized)
     @MainActor
     struct QueryRaceConditionTests {
 
@@ -486,11 +491,16 @@ struct AppStateTests {
                 return ([], [])
             }
 
+            // Production callers always have selectedTable set before invoking
+            // executeTableQuery (e.g. mutation-refresh paths use the current
+            // selectedTable). The internal context-validity check requires it.
+            connectionState.selectedTable = firstTable
             let firstTask = Task {
                 await appState.executeTableQuery(for: firstTable)
             }
 
             try? await Task.sleep(nanoseconds: 20_000_000)
+            connectionState.selectedTable = secondTable
             await appState.executeTableQuery(for: secondTable)
             await firstTask.value
 
@@ -523,6 +533,9 @@ struct AppStateTests {
             connectionState.selectedDatabase = DatabaseInfo(name: "testdb")
 
             let table = TableInfo(name: "events", schema: "public")
+            // Production callers always have selectedTable set before invoking
+            // executeTableQuery — the internal context-validity check requires it.
+            connectionState.selectedTable = table
             let longValue = String(repeating: "y", count: Constants.tableBrowseMaxCellCharacters + 256)
             mockService.queryResults = ([TableRow(values: ["payload": longValue])], ["payload"])
 

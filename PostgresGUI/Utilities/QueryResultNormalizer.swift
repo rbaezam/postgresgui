@@ -46,7 +46,10 @@ struct QueryResultNormalizer {
                 return (rows, columnNames)
             }
 
-            for key in parsed.keys where !seenKeys.contains(key) {
+            // Sort keys for deterministic column ordering — Dictionary.keys
+            // iteration order is unspecified, which made callers (and tests)
+            // flaky when `preferredColumnOrder` wasn't supplied.
+            for key in parsed.keys.sorted() where !seenKeys.contains(key) {
                 seenKeys.insert(key)
                 rawOrder.append(key)
             }

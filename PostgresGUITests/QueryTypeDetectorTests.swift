@@ -171,8 +171,11 @@ struct QueryTypeDetectorTests {
             #expect(QueryTypeDetector.extractTableName("UPDATE myschema.products SET price = 10") == "products")
         }
 
-        @Test func returnsNilForSelect() {
-            #expect(QueryTypeDetector.extractTableName("SELECT * FROM users") == nil)
+        @Test func extractsFromSelect() {
+            // extractTableName supports SELECT for preferred-column-order lookup.
+            // See commit fc09e0e ("Sort table columns in query results").
+            #expect(QueryTypeDetector.extractTableName("SELECT * FROM users") == "users")
+            #expect(QueryTypeDetector.extractTableName("select id, name from public.orders") == "orders")
         }
 
         @Test func returnsNilForOther() {
