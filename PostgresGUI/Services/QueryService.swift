@@ -109,7 +109,8 @@ class QueryService: QueryServiceProtocol {
         for table: TableInfo,
         limit: Int = 100,
         offset: Int = 0,
-        preferredColumnOrder: [String]? = nil
+        preferredColumnOrder: [String]? = nil,
+        filters: [ResultFilter] = []
     ) async -> QueryResult {
         if Task.isCancelled {
             return .failure(
@@ -132,7 +133,8 @@ class QueryService: QueryServiceProtocol {
             schema: table.schema,
             table: table.name,
             limit: limit,
-            offset: offset
+            offset: offset,
+            filters: filters
         )
         DebugLog.print("📝 [QueryService] Generated query: \(query) (ID: \(thisQueryID))")
 
@@ -250,9 +252,21 @@ class QueryService: QueryServiceProtocol {
         schema: String,
         table: String,
         limit: Int,
-        offset: Int
+        offset: Int,
+        filters: [ResultFilter] = []
     ) -> String {
-        let baseQuery = "SELECT * FROM \"\(schema)\".\"\(table)\" LIMIT \(limit) OFFSET \(offset)"
+        let whereClause: String
+        if filters.isEmpty {
+            whereClause = ""
+        } else {
+            let conditions = filters.map { filter in
+                let quotedColumn = SQLIdentifierQuoting.quoteIfNeeded(filter.column)
+                let quotedValue = SQLValueLiteral.quote(filter.value)
+                return "\(quotedColumn) = \(quotedValue)"
+            }
+            whereClause = " WHERE " + conditions.joined(separator: " AND ")
+        }
+        let baseQuery = "SELECT * FROM \"\(schema)\".\"\(table)\"\(whereClause) LIMIT \(limit) OFFSET \(offset)"
         return """
         SELECT to_jsonb(q) AS row
         FROM (

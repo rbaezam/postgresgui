@@ -55,8 +55,14 @@ class AppState {
     // MARK: - Query Execution
 
     /// Request a table query and cancel any in-flight table query task.
+    /// `filters` replaces the current `query.resultFilters` (default `[]`
+    /// clears them — so plain sidebar clicks reset to the unfiltered view).
     @MainActor
-    func requestTableQuery(for table: TableInfo, limit: Int? = nil) {
+    func requestTableQuery(
+        for table: TableInfo,
+        limit: Int? = nil,
+        filters: [ResultFilter] = []
+    ) {
         let shouldInterruptSupersededInFlightLoad = hasInFlightTableBrowseLoadToSupersede()
         tableQueryTask?.cancel()
         tableMetadataTask?.cancel()
@@ -65,6 +71,7 @@ class AppState {
         let requestId = tableQueryRequestId
         startTableQueryLoading(for: table)
         connection.selectedTable = table
+        query.resultFilters = filters
 
         tableQueryTask = Task { @MainActor in
             if shouldInterruptSupersededInFlightLoad {
@@ -98,7 +105,11 @@ class AppState {
         connection.selectedTable = table
 
         let paginationContext = makeTableBrowsePageCacheContext(for: table)
-        if let cachedPage = query.cachedTableBrowsePage(for: targetPage, context: paginationContext) {
+        // Skip the page cache when filters are active — see cache write site.
+        let cachedPage = query.resultFilters.isEmpty
+            ? query.cachedTableBrowsePage(for: targetPage, context: paginationContext)
+            : nil
+        if let cachedPage {
             if shouldInterruptSupersededInFlightLoad {
                 tableQueryTask = Task { @MainActor in
                     guard isTableQueryRequestCurrent(requestId: requestId) else { return }
@@ -154,60 +165,41 @@ class AppState {
     }
 
     /// Navigate to the row referenced by a foreign-key value.
-    /// Switches the selected table to the target and runs a one-shot
-    /// `SELECT … WHERE col = value LIMIT 1` filtered query.
+    /// Switches the selected table to the target and applies a single
+    /// `column = value` filter, which the user can clear from the
+    /// results filter bar to browse the whole referenced table.
     @MainActor
     func navigateToForeignKey(
         target: ColumnInfo.ForeignKeyTarget,
         value: String
     ) async {
-        // Cancel any in-flight table-browse work; FK nav supersedes it.
-        tableQueryTask?.cancel()
-        tableQueryTask = nil
-        tableMetadataTask?.cancel()
-        query.cancelCurrentQuerySilentlyForSupersession()
-
         // Resolve or construct the target TableInfo (the target may live
-        // in a schema not currently loaded in the sidebar — that's fine,
-        // we just need name + schema to query).
+        // in a schema not currently loaded in the sidebar).
         let targetTable: TableInfo = connection.tables.first {
             $0.schema == target.schema && $0.name == target.table
         } ?? TableInfo(name: target.table, schema: target.schema)
 
-        connection.selectedTable = targetTable
-        query.clearQueryResults()
-        query.startQueryExecution()
-
-        // Populate primary keys + column info for the target (idempotent).
+        // Pre-populate metadata so the inspector + FK-badges fire on the
+        // destination table before the query lands.
         let rowOps = RowOperationsService()
-        _ = await rowOps.ensureTableMetadata(
+        let metadata = await rowOps.ensureTableMetadata(
             table: targetTable,
             databaseService: connection.databaseService
         )
+        if case .success(let fetched) = metadata {
+            TableMetadataService().updateSelectedTableMetadata(
+                connectionState: connection,
+                primaryKeys: fetched.primaryKeyColumns,
+                columnInfo: fetched.columnInfo
+            )
+        }
 
-        // Build the filtered SELECT. Identifiers go through the
-        // quote-if-needed helper; the value goes through SQLValueLiteral
-        // (single-quote doubling — same pattern as RowOperationsService).
-        let quotedSchema = SQLIdentifierQuoting.quoteIfNeeded(target.schema)
-        let quotedTable = SQLIdentifierQuoting.quoteIfNeeded(target.table)
-        let quotedColumn = SQLIdentifierQuoting.quoteIfNeeded(target.column)
-        let quotedValue = SQLValueLiteral.quote(value)
-        let sql = """
-        SELECT to_jsonb(q) AS row FROM (
-            SELECT *
-            FROM \(quotedSchema).\(quotedTable)
-            WHERE \(quotedColumn) = \(quotedValue)
-            LIMIT 1
-        ) q
-        """
-
-        let qs = QueryService(
-            databaseService: connection.databaseService,
-            queryState: query,
-            connectionState: connection
+        // Standard browse path with a filter — same pagination, race,
+        // and column-normalization plumbing as a regular sidebar click.
+        requestTableQuery(
+            for: targetTable,
+            filters: [ResultFilter(column: target.column, value: value)]
         )
-        let result = await qs.executeQuery(sql, preferredColumnOrder: nil)
-        query.finishQueryExecution(with: result)
     }
 
     @MainActor
@@ -272,7 +264,8 @@ class AppState {
             for: table,
             limit: effectiveLimit,
             offset: isPaginated ? calculateOffset(page: requestedPage, pageSize: query.rowsPerPage) : 0,
-            preferredColumnOrder: preferredColumnOrder
+            preferredColumnOrder: preferredColumnOrder,
+            filters: query.resultFilters
         )
 
         guard isTableQueryRequestCurrent(requestId: requestId) else {
@@ -336,18 +329,23 @@ class AppState {
                 )
                 query.finishQueryExecution(with: trimmedResult)
 
-                query.cacheTableBrowsePage(
-                    page: requestedPage,
-                    rows: trimmedRows,
-                    columnNames: result.columnNames,
-                    hasNextPage: hasNextPage,
-                    context: makeTableBrowsePageCacheContext(
-                        tableId: tableId,
-                        databaseId: databaseId,
-                        connectionId: connectionId
-                    ),
-                    maxCachedPages: Constants.tableBrowseMaxCachedPages
-                )
+                // Don't cache filtered results — the cache key doesn't
+                // include filter state, so a cached page from one filter
+                // could serve another.
+                if query.resultFilters.isEmpty {
+                    query.cacheTableBrowsePage(
+                        page: requestedPage,
+                        rows: trimmedRows,
+                        columnNames: result.columnNames,
+                        hasNextPage: hasNextPage,
+                        context: makeTableBrowsePageCacheContext(
+                            tableId: tableId,
+                            databaseId: databaseId,
+                            connectionId: connectionId
+                        ),
+                        maxCachedPages: Constants.tableBrowseMaxCachedPages
+                    )
+                }
             } else {
                 // Non-paginated: use result as-is
                 query.hasNextPage = false

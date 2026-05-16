@@ -25,7 +25,8 @@ protocol QueryServiceProtocol {
         for table: TableInfo,
         limit: Int,
         offset: Int,
-        preferredColumnOrder: [String]?
+        preferredColumnOrder: [String]?,
+        filters: [ResultFilter]
     ) async -> QueryResult
 
     /// Cancel the currently running query

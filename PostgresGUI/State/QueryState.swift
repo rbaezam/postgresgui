@@ -49,6 +49,11 @@ class QueryState {
     var selectedRowIDs: Set<UUID> = []
     var isResultsReadOnlyDueToContextMismatch: Bool = false
 
+    /// Equality filters applied to the current table-browse view.
+    /// Set via AppState.requestTableQuery(filters:) — UI shows them as
+    /// removable chips above the results.
+    var resultFilters: [ResultFilter] = []
+
     // In-memory cache for SavedQuery results (keyed by SavedQuery.id)
     private var savedQueryResultsCache: [UUID: CachedQueryResult] = [:]
 
@@ -270,6 +275,7 @@ class QueryState {
         queryColumnNames = nil
         selectedRowIDs = []
         isResultsReadOnlyDueToContextMismatch = false
+        resultFilters = []
     }
 
     /// Reset query state
@@ -292,6 +298,7 @@ class QueryState {
         queryExecutionTime = nil
         selectedRowIDs = []
         isResultsReadOnlyDueToContextMismatch = false
+        resultFilters = []
         currentPage = 0
         hasNextPage = false
         clearTableBrowsePageCache()
