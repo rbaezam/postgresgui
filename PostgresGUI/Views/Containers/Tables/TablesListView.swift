@@ -256,6 +256,7 @@ struct TableListRowView: View {
             columnInfo: columnInfo,
             isLoadingColumns: isLoadingColumns,
             showSchemaPrefix: showSchemaPrefix,
+            isSelected: appState.connection.selectedTable?.id == table.id,
             onToggleExpanded: {
                 toggleExpanded()
             },

@@ -16,6 +16,7 @@ struct TableListRowComponent: View {
     let columnInfo: [ColumnInfo]?
     let isLoadingColumns: Bool
     var showSchemaPrefix: Bool = true
+    var isSelected: Bool = false
     
     // Callbacks
     let onToggleExpanded: () -> Void
@@ -39,7 +40,10 @@ struct TableListRowComponent: View {
     private let rowCornerRadius: CGFloat = 6
 
     private var rowBackground: Color {
-        isHovered ? Color.secondary.opacity(0.12) : Color.clear
+        if isSelected {
+            return Color.accentColor.opacity(0.18)
+        }
+        return isHovered ? Color.secondary.opacity(0.12) : Color.clear
     }
 
     var body: some View {
