@@ -55,7 +55,11 @@ struct ConnectionDropdown: View {
 
     private func buttonContent(opacity: Double) -> some View {
         HStack(spacing: 6) {
-            if hasConnection {
+            if hasConnection, let tag = appState.connection.currentConnection?.colorTagEnum {
+                Circle()
+                    .fill(tag.swiftUIColor)
+                    .frame(width: 8, height: 8)
+            } else if hasConnection {
                 Image(systemName: "globe")
                     .font(.system(size: 14))
                     .foregroundColor(.secondary)
@@ -68,6 +72,9 @@ struct ConnectionDropdown: View {
                 .foregroundColor(hasConnection ? .primary : .secondary)
                 .opacity(opacity)
                 .lineLimit(1)
+            if hasConnection, appState.connection.currentConnection?.isReadOnly == true {
+                ReadOnlyBadge()
+            }
             Image(systemName: "chevron.down")
                 .font(.system(size: DropdownFontSize.chevron))
                 .foregroundColor(.secondary)
@@ -116,10 +123,21 @@ struct ConnectionDropdown: View {
                 .frame(width: 12)
                 .foregroundColor(.accentColor)
 
+            if let tag = connection.colorTagEnum {
+                Circle()
+                    .fill(tag.swiftUIColor)
+                    .frame(width: 8, height: 8)
+            }
+
             Text(connection.displayName)
                 .font(.system(size: DropdownFontSize.dropdownItem))
-                .frame(maxWidth: 200, alignment: .leading)
                 .lineLimit(1)
+
+            if connection.isReadOnly {
+                ReadOnlyBadge()
+            }
+
+            Spacer(minLength: 0)
 
             Button {
                 isOpen = false

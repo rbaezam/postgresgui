@@ -81,6 +81,23 @@ struct MainSplitView: View {
                 }
             }
             .toolbar {
+                if let connection = appState.connection.currentConnection {
+                    ToolbarItem(placement: .navigation) {
+                        HStack(spacing: 6) {
+                            if let tag = connection.colorTagEnum {
+                                Circle()
+                                    .fill(tag.swiftUIColor)
+                                    .frame(width: 10, height: 10)
+                            }
+                            Text(connection.displayName)
+                                .font(.system(size: 12, weight: .medium))
+                                .lineLimit(1)
+                            if connection.isReadOnly {
+                                ReadOnlyBadge()
+                            }
+                        }
+                    }
+                }
                 ToolbarItem(placement: .automatic) {
                     Button {
                         showRowInspector.toggle()
@@ -98,7 +115,8 @@ struct MainSplitView: View {
                     let rowOperations = RowOperationsService()
                     let queryService = QueryService(
                         databaseService: appState.connection.databaseService,
-                        queryState: appState.query
+                        queryState: appState.query,
+                        connectionState: appState.connection
                     )
                     let historyService = QueryHistoryService(modelContext: modelContext)
                     viewModel = DetailContentViewModel(

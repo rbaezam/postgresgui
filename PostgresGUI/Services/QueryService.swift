@@ -13,11 +13,18 @@ import Foundation
 class QueryService: QueryServiceProtocol {
     private let databaseService: DatabaseServiceProtocol
     private let queryState: QueryState
+    private let connectionState: ConnectionState?
     private let clock: ClockProtocol
 
-    init(databaseService: DatabaseServiceProtocol, queryState: QueryState, clock: ClockProtocol? = nil) {
+    init(
+        databaseService: DatabaseServiceProtocol,
+        queryState: QueryState,
+        connectionState: ConnectionState? = nil,
+        clock: ClockProtocol? = nil
+    ) {
         self.databaseService = databaseService
         self.queryState = queryState
+        self.connectionState = connectionState
         self.clock = clock ?? SystemClock()
     }
 
@@ -26,6 +33,15 @@ class QueryService: QueryServiceProtocol {
         if Task.isCancelled {
             return .failure(
                 error: CancellationError(),
+                executionTime: 0
+            )
+        }
+
+        // Read-only gate: block mutations on connections marked read-only.
+        if connectionState?.currentConnection?.isReadOnly == true,
+           !ReadOnlyGate.isReadSafe(sql) {
+            return .failure(
+                error: DatabaseError.readOnlyViolation,
                 executionTime: 0
             )
         }

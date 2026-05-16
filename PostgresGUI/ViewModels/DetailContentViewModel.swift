@@ -55,13 +55,44 @@ class DetailContentViewModel {
         appState.query.isResultsReadOnlyDueToContextMismatch
     }
 
+    /// Whether the current connection is marked read-only
+    var isEditingDisabledDueToReadOnlyConnection: Bool {
+        appState.connection.currentConnection?.isReadOnly == true
+    }
+
+    /// Combined "no mutations allowed" flag for toolbar / button gating
+    var isEditingDisabled: Bool {
+        isEditingDisabledDueToContextMismatch || isEditingDisabledDueToReadOnlyConnection
+    }
+
+    /// User-facing reason for why mutation actions are disabled, if any
+    var editingDisabledHelpText: String? {
+        if isEditingDisabledDueToReadOnlyConnection {
+            return Self.readOnlyConnectionHelpText
+        }
+        if isEditingDisabledDueToContextMismatch {
+            return Self.contextMismatchHelpText
+        }
+        return nil
+    }
+
     static let contextMismatchHelpText =
         "Editing disabled because results are from a different connection/database."
+
+    static let readOnlyConnectionHelpText =
+        "This connection is read-only. Disable read-only mode in the connection settings to make changes."
 
     private var contextMismatchReason: EditabilityReason {
         EditabilityReason(
             title: "Read-Only Results",
             body: Self.contextMismatchHelpText
+        )
+    }
+
+    private var readOnlyConnectionReason: EditabilityReason {
+        EditabilityReason(
+            title: "Read-Only Connection",
+            body: Self.readOnlyConnectionHelpText
         )
     }
 
@@ -221,6 +252,10 @@ class DetailContentViewModel {
     }
 
     func performDelete() async {
+        guard !isEditingDisabledDueToReadOnlyConnection else {
+            deleteError = readOnlyConnectionReason
+            return
+        }
         guard let selectedTable = appState.connection.selectedTable else { return }
 
         // Get selected rows with their indices for potential rollback
@@ -275,6 +310,11 @@ class DetailContentViewModel {
 
     func editSelectedRows() {
         DebugLog.print("✏️ [DetailContentViewModel] Edit button clicked for \(appState.query.selectedRowIDs.count) row(s)")
+
+        if isEditingDisabledDueToReadOnlyConnection {
+            editError = readOnlyConnectionReason
+            return
+        }
 
         if isEditingDisabledDueToContextMismatch {
             editError = contextMismatchReason
@@ -384,6 +424,10 @@ class DetailContentViewModel {
     func saveEditedRow(originalRow: TableRow, updatedValues: [String: RowEditValue]) async throws {
         DebugLog.print("🟡 [DetailContentViewModel.saveEditedRow] Received updatedValues: \(updatedValues)")
         DebugLog.print("  updatedValues count: \(updatedValues.count)")
+
+        guard !isEditingDisabledDueToReadOnlyConnection else {
+            throw DatabaseError.readOnlyViolation
+        }
 
         guard let selectedTable = appState.connection.selectedTable else {
             throw RowOperationError.noTableSelected

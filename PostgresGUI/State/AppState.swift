@@ -177,7 +177,8 @@ class AppState {
 
         let queryService = QueryService(
             databaseService: connection.databaseService,
-            queryState: query
+            queryState: query,
+            connectionState: connection
         )
 
         guard isTableQueryRequestCurrent(requestId: requestId) else {

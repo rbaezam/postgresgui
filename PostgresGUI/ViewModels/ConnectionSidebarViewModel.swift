@@ -194,6 +194,12 @@ class ConnectionSidebarViewModel {
 
     /// Delete a database with optimistic update
     func deleteDatabase(_ database: DatabaseInfo) async {
+        if appState.connection.currentConnection?.isReadOnly == true {
+            deleteError = DatabaseError.readOnlyViolation.localizedDescription
+            databaseToDelete = nil
+            return
+        }
+
         let versionBeforeDelete = appState.connection.databasesVersion
         let snapshot = DeleteDatabaseSnapshot(
             databases: appState.connection.databases,

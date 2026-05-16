@@ -44,7 +44,8 @@ class QueryEditorViewModel {
         // Create QueryService if not provided (for dependency injection in tests)
         self.queryService = queryService ?? QueryService(
             databaseService: appState.connection.databaseService,
-            queryState: appState.query
+            queryState: appState.query,
+            connectionState: appState.connection
         )
         self.queryHistoryService = queryHistoryService ?? QueryHistoryService(
             modelContext: modelContext

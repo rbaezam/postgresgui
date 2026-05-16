@@ -13,6 +13,7 @@ enum DatabaseError: Error, LocalizedError {
     case queryFailed(String)
     case unknownError(String)
     case timeout
+    case readOnlyViolation
 
     var errorDescription: String? {
         switch self {
@@ -26,6 +27,8 @@ enum DatabaseError: Error, LocalizedError {
             return message
         case .timeout:
             return "The operation timed out. The database may be slow or unresponsive."
+        case .readOnlyViolation:
+            return "This connection is read-only. INSERT, UPDATE, DELETE, and other data-changing statements are blocked. Disable read-only mode in the connection settings to make changes."
         }
     }
 

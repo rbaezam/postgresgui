@@ -15,7 +15,7 @@ struct DetailContentToolbar: ToolbarContent {
 
     var body: some ToolbarContent {
         ToolbarItemGroup(placement: .automatic) {
-            // JSON Viewer button
+            // JSON Viewer button — read action, allowed even on read-only connections
             ToolbarIconButton(
                 systemName: "square.and.arrow.down",
                 action: { viewModel.openJSONView() },
@@ -28,22 +28,18 @@ struct DetailContentToolbar: ToolbarContent {
             ToolbarIconButton(
                 systemName: "square.and.pencil",
                 action: { viewModel.editSelectedRows() },
-                isDisabled: appState.query.selectedRowIDs.isEmpty || viewModel.isEditingDisabledDueToContextMismatch,
-                helpText: viewModel.isEditingDisabledDueToContextMismatch
-                    ? DetailContentViewModel.contextMismatchHelpText
-                    : "Edit selected row",
-                useHoverPopover: viewModel.isEditingDisabledDueToContextMismatch
+                isDisabled: appState.query.selectedRowIDs.isEmpty || viewModel.isEditingDisabled,
+                helpText: viewModel.editingDisabledHelpText ?? "Edit selected row",
+                useHoverPopover: viewModel.isEditingDisabled
             )
 
             // Delete button
             ToolbarIconButton(
                 systemName: "trash",
                 action: { viewModel.deleteSelectedRows() },
-                isDisabled: appState.query.selectedRowIDs.isEmpty || viewModel.isEditingDisabledDueToContextMismatch,
-                helpText: viewModel.isEditingDisabledDueToContextMismatch
-                    ? DetailContentViewModel.contextMismatchHelpText
-                    : "Delete selected rows",
-                useHoverPopover: viewModel.isEditingDisabledDueToContextMismatch
+                isDisabled: appState.query.selectedRowIDs.isEmpty || viewModel.isEditingDisabled,
+                helpText: viewModel.editingDisabledHelpText ?? "Delete selected rows",
+                useHoverPopover: viewModel.isEditingDisabled
             )
         }
     }

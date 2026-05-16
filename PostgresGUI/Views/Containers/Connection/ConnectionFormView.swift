@@ -194,6 +194,46 @@ struct ConnectionFormView: View {
                 }
             }
 
+            formRow(label: "Color Tag") {
+                HStack(spacing: 6) {
+                    ForEach(ConnectionColorTag.allCases) { tag in
+                        Circle()
+                            .fill(tag.swiftUIColor)
+                            .frame(width: 16, height: 16)
+                            .overlay(
+                                Circle().stroke(
+                                    viewModel.colorTagSelection == tag
+                                        ? Color.primary : Color.clear,
+                                    lineWidth: 2
+                                )
+                            )
+                            .contentShape(Circle())
+                            .onTapGesture {
+                                viewModel.colorTagSelection =
+                                    viewModel.colorTagSelection == tag ? nil : tag
+                            }
+                            .help(tag.displayName)
+                    }
+                    Text(viewModel.colorTagSelection?.displayName ?? "None")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.leading, 4)
+                }
+            }
+
+            formRow(label: "Read-Only") {
+                HStack(spacing: 8) {
+                    Toggle("", isOn: $viewModel.isReadOnly)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+
+                    HoverTooltipIcon(
+                        systemName: "info.circle",
+                        helpText: "Block INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, CREATE, GRANT, REVOKE, and other data-changing statements for this connection."
+                    )
+                }
+            }
+
             formRow(label: "Database") {
                 TextField("postgres", text: $viewModel.database)
                     .textFieldStyle(.roundedBorder)

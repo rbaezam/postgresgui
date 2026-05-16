@@ -79,6 +79,12 @@ class TableContextMenuViewModel {
     func truncateTable() async {
         guard let appState = appState else { return }
 
+        if appState.connection.currentConnection?.isReadOnly == true {
+            errorMessage = DatabaseError.readOnlyViolation.localizedDescription
+            showError = true
+            return
+        }
+
         isTruncating = true
         defer { isTruncating = false }
 
@@ -100,6 +106,12 @@ class TableContextMenuViewModel {
 
     func dropTable() async {
         guard let appState = appState else { return }
+
+        if appState.connection.currentConnection?.isReadOnly == true {
+            errorMessage = DatabaseError.readOnlyViolation.localizedDescription
+            showError = true
+            return
+        }
 
         isDropping = true
         defer { isDropping = false }

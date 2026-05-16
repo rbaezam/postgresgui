@@ -85,6 +85,11 @@ struct CreateDatabaseView: View {
         let name = databaseName.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty else { return }
 
+        if appState.connection.currentConnection?.isReadOnly == true {
+            errorMessage = DatabaseError.readOnlyViolation.localizedDescription
+            return
+        }
+
         isCreating = true
         errorMessage = nil
 

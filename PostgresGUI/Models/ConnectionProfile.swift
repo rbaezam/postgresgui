@@ -28,6 +28,10 @@ final class ConnectionProfile: Identifiable {
     var sshAuthMethod: String?
     var sshPrivateKeyPath: String?
 
+    // Safety / environment tagging
+    var colorTag: String?
+    var isReadOnly: Bool = false
+
     init(
         id: UUID = UUID(),
         name: String?,
@@ -43,7 +47,9 @@ final class ConnectionProfile: Identifiable {
         sshPort: Int? = nil,
         sshUsername: String? = nil,
         sshAuthMethod: SSHAuthMethod? = nil,
-        sshPrivateKeyPath: String? = nil
+        sshPrivateKeyPath: String? = nil,
+        colorTag: ConnectionColorTag? = nil,
+        isReadOnly: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -60,6 +66,8 @@ final class ConnectionProfile: Identifiable {
         self.sshUsername = sshUsername
         self.sshAuthMethod = sshAuthMethod?.rawValue
         self.sshPrivateKeyPath = sshPrivateKeyPath
+        self.colorTag = colorTag?.rawValue
+        self.isReadOnly = isReadOnly
     }
 }
 
@@ -72,6 +80,11 @@ extension ConnectionProfile {
     /// Get the SSH auth method as an enum
     var sshAuthMethodEnum: SSHAuthMethod {
         sshAuthMethod.flatMap { SSHAuthMethod(rawValue: $0) } ?? .password
+    }
+
+    /// Get the color tag as an enum (forward-compatible with unknown raw values)
+    var colorTagEnum: ConnectionColorTag? {
+        colorTag.flatMap(ConnectionColorTag.init(rawValue:))
     }
 
     /// Extract the root domain from the host

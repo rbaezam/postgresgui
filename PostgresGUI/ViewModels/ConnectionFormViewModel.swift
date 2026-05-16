@@ -49,6 +49,10 @@ class ConnectionFormViewModel {
     var sslModeSelection: SSLMode = .default
     private var isSSLModeUserSelected: Bool = false
 
+    // Color tag + read-only safety flag
+    var colorTagSelection: ConnectionColorTag? = nil
+    var isReadOnly: Bool = false
+
     // MARK: - Input Mode
 
     var inputMode: ConnectionInputMode = .individual
@@ -159,6 +163,10 @@ class ConnectionFormViewModel {
         sshUsername = connection.sshUsername ?? ""
         sshAuthMethod = connection.sshAuthMethodEnum
         sshPrivateKeyPath = connection.sshPrivateKeyPath ?? ""
+
+        // Color tag + read-only flag
+        colorTagSelection = connection.colorTagEnum
+        isReadOnly = connection.isReadOnly
 
         // SSH password/passphrase — lazy load from Keychain (same pattern as DB password)
         if sshEnabled {
@@ -403,6 +411,10 @@ class ConnectionFormViewModel {
                 profile.sshAuthMethod = sshEnabled ? sshAuthMethod.rawValue : nil
                 profile.sshPrivateKeyPath = (sshEnabled && sshAuthMethod == .privateKey) ? sshPrivateKeyPath : nil
 
+                // Color tag + read-only flag
+                profile.colorTag = colorTagSelection?.rawValue
+                profile.isReadOnly = isReadOnly
+
                 // Update password if modified
                 if passwordModified {
                     if !password.isEmpty {
@@ -444,7 +456,9 @@ class ConnectionFormViewModel {
                     sshPort: sshEnabled ? (Int(sshPort) ?? 22) : nil,
                     sshUsername: sshEnabled ? sshUsername : nil,
                     sshAuthMethod: sshEnabled ? sshAuthMethod : nil,
-                    sshPrivateKeyPath: (sshEnabled && sshAuthMethod == .privateKey) ? sshPrivateKeyPath : nil
+                    sshPrivateKeyPath: (sshEnabled && sshAuthMethod == .privateKey) ? sshPrivateKeyPath : nil,
+                    colorTag: colorTagSelection,
+                    isReadOnly: isReadOnly
                 )
 
                 // Save password to keychain
