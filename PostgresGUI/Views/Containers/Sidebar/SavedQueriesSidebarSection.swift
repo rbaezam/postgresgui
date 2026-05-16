@@ -235,6 +235,12 @@ struct SavedQueriesSidebarSection: View {
                 savedQueries: savedQueries
             )
         }
+        .onReceive(NotificationCenter.default.publisher(for: .loadSavedQuery)) { notification in
+            guard let id = notification.object as? UUID,
+                  let query = savedQueries.first(where: { $0.id == id }) else { return }
+            viewModel.loadQuery(query)
+            selectedQueryIDs = [query.id]
+        }
         .sheet(
             item: Binding(
                 get: { viewModel.queryToEdit },

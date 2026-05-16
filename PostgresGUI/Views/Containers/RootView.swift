@@ -119,6 +119,16 @@ struct RootView: View {
         .onReceive(NotificationCenter.default.publisher(for: .showHelp)) { _ in
             appState.navigation.isShowingHelp = true
         }
+        .onReceive(NotificationCenter.default.publisher(for: .openCommandPalette)) { _ in
+            appState.navigation.isShowingCommandPalette.toggle()
+        }
+        .sheet(isPresented: Binding(
+            get: { appState.navigation.isShowingCommandPalette },
+            set: { appState.navigation.isShowingCommandPalette = $0 }
+        )) {
+            CommandPaletteView()
+                .environment(appState)
+        }
         .sheet(isPresented: Binding(
             get: { appState.navigation.isShowingHelp },
             set: { appState.navigation.isShowingHelp = $0 }

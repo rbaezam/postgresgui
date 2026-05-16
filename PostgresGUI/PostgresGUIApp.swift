@@ -97,6 +97,13 @@ struct PostgresGUIApp: App {
                 }) {
                     Label("Keyboard Shortcuts...", systemImage: "keyboard")
                 }
+
+                Button(action: {
+                    NotificationCenter.default.post(name: .openCommandPalette, object: nil)
+                }) {
+                    Label("Command Palette…", systemImage: "command.square")
+                }
+                .keyboardShortcut("k", modifiers: [.command])
             }
 
             CommandGroup(replacing: .help) {
@@ -128,4 +135,6 @@ extension Notification.Name {
     static let closeCurrentTab = Notification.Name("closeCurrentTab")
     static let showKeyboardShortcuts = Notification.Name("showKeyboardShortcuts")
     static let showHelp = Notification.Name("showHelp")
+    static let openCommandPalette = Notification.Name("openCommandPalette")
+    static let loadSavedQuery = Notification.Name("loadSavedQuery")
 }
