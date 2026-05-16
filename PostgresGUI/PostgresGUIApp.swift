@@ -26,25 +26,66 @@ struct PostgresGUIApp: App {
             QueryHistoryEntry.self,
         ])
 
+        // App-specific store path so we don't collide with the global
+        // `~/Library/Application Support/default.store` that other
+        // unsandboxed SwiftData apps may also use (and that the
+        // migration-fallback below blindly deletes). In a sandboxed
+        // Release build this resolves inside the app container; in
+        // unsigned Debug builds it stays under the user's global
+        // Application Support but scoped to a Postgresso subdirectory.
+        let appSupportURL = FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        ).first!
+        let appDirectory = appSupportURL.appendingPathComponent(
+            "Postgresso",
+            isDirectory: true
+        )
+        try? FileManager.default.createDirectory(
+            at: appDirectory,
+            withIntermediateDirectories: true
+        )
+        let storeURL = appDirectory.appendingPathComponent("default.store")
+
+        // One-shot migration: if a previous build wrote to the un-scoped
+        // global `~/Library/Application Support/default.store` path
+        // (which was vulnerable to wipes from collisions with other
+        // unsandboxed SwiftData apps), copy those files into our new
+        // scoped directory once. If schema doesn't match, the catch
+        // block below will recover by wiping our scoped store; the
+        // global file is left alone so the user can delete it manually.
+        let legacyStoreURL = appSupportURL.appendingPathComponent("default.store")
+        if FileManager.default.fileExists(atPath: legacyStoreURL.path),
+           !FileManager.default.fileExists(atPath: storeURL.path) {
+            let legacyFiles = [
+                "default.store",
+                "default.store-wal",
+                "default.store-shm",
+            ]
+            for name in legacyFiles {
+                let src = appSupportURL.appendingPathComponent(name)
+                let dst = appDirectory.appendingPathComponent(name)
+                if FileManager.default.fileExists(atPath: src.path) {
+                    try? FileManager.default.copyItem(at: src, to: dst)
+                }
+            }
+            Swift.print("ℹ️ Migrated SwiftData store from \(legacyStoreURL.path) to \(storeURL.path)")
+        }
+
         let modelConfiguration = ModelConfiguration(
             schema: schema,
-            isStoredInMemoryOnly: false
+            url: storeURL
         )
 
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
         } catch {
-            // If migration fails, try to delete the old database
+            // If migration fails, delete only OUR store files and try again.
             // Critical errors should remain visible in Release builds
             Swift.print("⚠️ Failed to create ModelContainer: \(error)")
             Swift.print("⚠️ Attempting to delete old database and create fresh...")
 
-            // Get the default store URL
-            let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-            let storeURL = appSupportURL.appendingPathComponent("default.store")
-
             do {
-                // Remove all store files
                 let storeFiles = [
                     storeURL,
                     storeURL.appendingPathExtension("wal"),
