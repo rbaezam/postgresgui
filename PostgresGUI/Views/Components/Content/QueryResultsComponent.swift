@@ -49,6 +49,7 @@ struct QueryResultsComponent: View {
     // Data
     let results: [TableRow]
     let columnNames: [String]?
+    var columnInfo: [ColumnInfo]? = nil
     let searchText: String
     let isExecuting: Bool
     let errorMessage: String?
@@ -56,15 +57,16 @@ struct QueryResultsComponent: View {
     let currentPage: Int
     let hasNextPage: Bool
     let tableId: String?
-    
+
     // Bindings
     @Binding var selectedRowIDs: Set<TableRow.ID>
-    
+
     // Callbacks
     let onPreviousPage: () -> Void
     let onNextPage: () -> Void
     var onDeleteKeyPressed: (() -> Void)?
     var onSpaceKeyPressed: (() -> Void)?
+    var onForeignKeyNavigate: ((ColumnInfo.ForeignKeyTarget, String) -> Void)?
     
     // Local state for sorting
     @State private var sortOrder: [TableRowComparator] = []
@@ -212,6 +214,14 @@ struct QueryResultsComponent: View {
                                         columnName: columnName
                                     )
                                 }
+                                if let target = foreignKeyTarget(for: columnName),
+                                   let value = row.values[columnName] ?? nil,
+                                   !value.isEmpty {
+                                    Divider()
+                                    Button("Go to referenced row") {
+                                        onForeignKeyNavigate?(target, value)
+                                    }
+                                }
                             }
                             .popover(
                                 isPresented: cellPopoverBinding(
@@ -260,6 +270,10 @@ struct QueryResultsComponent: View {
             }
         }
         .id(tableIdentity)
+    }
+
+    private func foreignKeyTarget(for columnName: String) -> ColumnInfo.ForeignKeyTarget? {
+        columnInfo?.first { $0.name == columnName }?.foreignKeyTarget
     }
 
     private func cellPopoverBinding(rowID: UUID, columnName: String) -> Binding<Bool> {

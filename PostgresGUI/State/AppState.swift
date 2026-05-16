@@ -153,6 +153,63 @@ class AppState {
         )
     }
 
+    /// Navigate to the row referenced by a foreign-key value.
+    /// Switches the selected table to the target and runs a one-shot
+    /// `SELECT … WHERE col = value LIMIT 1` filtered query.
+    @MainActor
+    func navigateToForeignKey(
+        target: ColumnInfo.ForeignKeyTarget,
+        value: String
+    ) async {
+        // Cancel any in-flight table-browse work; FK nav supersedes it.
+        tableQueryTask?.cancel()
+        tableQueryTask = nil
+        tableMetadataTask?.cancel()
+        query.cancelCurrentQuerySilentlyForSupersession()
+
+        // Resolve or construct the target TableInfo (the target may live
+        // in a schema not currently loaded in the sidebar — that's fine,
+        // we just need name + schema to query).
+        let targetTable: TableInfo = connection.tables.first {
+            $0.schema == target.schema && $0.name == target.table
+        } ?? TableInfo(name: target.table, schema: target.schema)
+
+        connection.selectedTable = targetTable
+        query.clearQueryResults()
+        query.startQueryExecution()
+
+        // Populate primary keys + column info for the target (idempotent).
+        let rowOps = RowOperationsService()
+        _ = await rowOps.ensureTableMetadata(
+            table: targetTable,
+            databaseService: connection.databaseService
+        )
+
+        // Build the filtered SELECT. Identifiers go through the
+        // quote-if-needed helper; the value goes through SQLValueLiteral
+        // (single-quote doubling — same pattern as RowOperationsService).
+        let quotedSchema = SQLIdentifierQuoting.quoteIfNeeded(target.schema)
+        let quotedTable = SQLIdentifierQuoting.quoteIfNeeded(target.table)
+        let quotedColumn = SQLIdentifierQuoting.quoteIfNeeded(target.column)
+        let quotedValue = SQLValueLiteral.quote(value)
+        let sql = """
+        SELECT to_jsonb(q) AS row FROM (
+            SELECT *
+            FROM \(quotedSchema).\(quotedTable)
+            WHERE \(quotedColumn) = \(quotedValue)
+            LIMIT 1
+        ) q
+        """
+
+        let qs = QueryService(
+            databaseService: connection.databaseService,
+            queryState: query,
+            connectionState: connection
+        )
+        let result = await qs.executeQuery(sql, preferredColumnOrder: nil)
+        query.finishQueryExecution(with: result)
+    }
+
     @MainActor
     private func executeTableQueryInternal(
         for table: TableInfo,

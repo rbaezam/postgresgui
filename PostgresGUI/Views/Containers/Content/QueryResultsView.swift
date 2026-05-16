@@ -54,6 +54,7 @@ struct QueryResultsView: View {
         QueryResultsComponent(
             results: appState.query.queryResults,
             columnNames: columnNames,
+            columnInfo: appState.connection.selectedTable?.columnInfo,
             searchText: searchText,
             isExecuting: isExecutingResultsLoad,
             errorMessage: appState.query.queryErrorMessage,
@@ -74,7 +75,10 @@ struct QueryResultsView: View {
                 viewModel?.goToNextPage()
             },
             onDeleteKeyPressed: onDeleteKeyPressed,
-            onSpaceKeyPressed: onSpaceKeyPressed
+            onSpaceKeyPressed: onSpaceKeyPressed,
+            onForeignKeyNavigate: { target, value in
+                Task { await appState.navigateToForeignKey(target: target, value: value) }
+            }
         )
         .onAppear {
             viewModel = QueryResultsViewModel(appState: appState, tabManager: tabManager)

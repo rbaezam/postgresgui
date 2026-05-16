@@ -339,15 +339,55 @@ struct PostgresQueryExecutor: QueryExecutorProtocol {
         schema: String,
         table: String
     ) async throws -> [ColumnInfo] {
+        // LEFT JOIN to a subquery that resolves the referenced
+        // (schema, table, column) for *single-column* foreign keys.
+        // Composite FKs (constraint_col_count > 1) are excluded so they
+        // don't appear as navigable in the UI — they need different UX.
+        // Multiple FKs on the same column: rn = 1 picks the first
+        // alphabetically by constraint name.
         let sql = """
         SELECT
-            column_name,
-            data_type,
-            is_nullable,
-            column_default
-        FROM information_schema.columns
-        WHERE table_schema = '\(schema)' AND table_name = '\(table)'
-        ORDER BY ordinal_position
+            c.column_name,
+            c.data_type,
+            c.is_nullable,
+            c.column_default,
+            fk.referenced_schema,
+            fk.referenced_table,
+            fk.referenced_column
+        FROM information_schema.columns c
+        LEFT JOIN (
+            SELECT
+                kcu.column_name,
+                ccu.table_schema AS referenced_schema,
+                ccu.table_name   AS referenced_table,
+                ccu.column_name  AS referenced_column,
+                ROW_NUMBER() OVER (
+                    PARTITION BY kcu.column_name
+                    ORDER BY kcu.constraint_name
+                ) AS rn,
+                COUNT(*) OVER (
+                    PARTITION BY kcu.constraint_name
+                ) AS constraint_col_count
+            FROM information_schema.table_constraints tc
+            JOIN information_schema.key_column_usage kcu
+                ON kcu.constraint_name = tc.constraint_name
+               AND kcu.table_schema    = tc.table_schema
+            JOIN information_schema.referential_constraints rc
+                ON rc.constraint_name = tc.constraint_name
+               AND rc.constraint_schema = tc.constraint_schema
+            JOIN information_schema.key_column_usage ccu
+                ON ccu.constraint_name = rc.unique_constraint_name
+               AND ccu.constraint_schema = rc.unique_constraint_schema
+               AND ccu.ordinal_position = kcu.position_in_unique_constraint
+            WHERE tc.constraint_type = 'FOREIGN KEY'
+              AND tc.table_schema = '\(schema)'
+              AND tc.table_name   = '\(table)'
+        ) fk
+            ON fk.column_name = c.column_name
+           AND fk.rn = 1
+           AND fk.constraint_col_count = 1
+        WHERE c.table_schema = '\(schema)' AND c.table_name = '\(table)'
+        ORDER BY c.ordinal_position
         """
 
         logger.debug("Fetching columns for \(schema).\(table)")

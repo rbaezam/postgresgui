@@ -47,10 +47,20 @@ struct PostgresResultMapper: ResultMapperProtocol {
             throw DatabaseError.unknownError("Expected PostgresDatabaseRow")
         }
 
-        let (columnName, dataType, isNullableString, defaultValue) =
-            try postgresRow.row.decode((String, String, String, String?).self)
+        let (
+            columnName,
+            dataType,
+            isNullableString,
+            defaultValue,
+            referencedSchema,
+            referencedTable,
+            referencedColumn
+        ) = try postgresRow.row.decode(
+            (String, String, String, String?, String?, String?, String?).self
+        )
 
         let isNullable = isNullableString.uppercased() == "YES"
+        let hasForeignKey = referencedTable != nil
 
         return ColumnInfo(
             name: columnName,
@@ -59,7 +69,10 @@ struct PostgresResultMapper: ResultMapperProtocol {
             defaultValue: defaultValue,
             isPrimaryKey: false,
             isUnique: false,
-            isForeignKey: false
+            isForeignKey: hasForeignKey,
+            referencedSchema: referencedSchema,
+            referencedTable: referencedTable,
+            referencedColumn: referencedColumn
         )
     }
 

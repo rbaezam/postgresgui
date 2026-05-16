@@ -133,6 +133,7 @@ struct RowDetailsPanel: View {
                         .font(.system(.caption, design: .monospaced))
                         .foregroundStyle(.secondary)
                 }
+                foreignKeyButton(target: info?.foreignKeyTarget, value: value)
                 expandButton(for: name, value: value, dataType: info?.dataType)
             }
 
@@ -140,6 +141,24 @@ struct RowDetailsPanel: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.vertical, 8)
+    }
+
+    @ViewBuilder
+    private func foreignKeyButton(
+        target: ColumnInfo.ForeignKeyTarget?,
+        value: String?
+    ) -> some View {
+        if let target, let value, !value.isEmpty {
+            Button {
+                Task { await appState.navigateToForeignKey(target: target, value: value) }
+            } label: {
+                Image(systemName: "arrow.right.circle")
+                    .font(.caption)
+                    .foregroundStyle(.tint)
+            }
+            .buttonStyle(.plain)
+            .help("Go to referenced row in \(target.schema).\(target.table)")
+        }
     }
 
     private func expandButton(
