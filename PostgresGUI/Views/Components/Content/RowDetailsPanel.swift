@@ -7,6 +7,7 @@ import SwiftUI
 
 struct RowDetailsPanel: View {
     @Environment(AppState.self) private var appState
+    @State private var expandedColumnName: String? = nil
 
     enum ResolvedState: Equatable {
         case empty
@@ -132,12 +133,43 @@ struct RowDetailsPanel: View {
                         .font(.system(.caption, design: .monospaced))
                         .foregroundStyle(.secondary)
                 }
+                expandButton(for: name, value: value, dataType: info?.dataType)
             }
 
             valueView(for: value)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.vertical, 8)
+    }
+
+    private func expandButton(
+        for name: String,
+        value: String?,
+        dataType: String?
+    ) -> some View {
+        Button {
+            expandedColumnName = name
+        } label: {
+            Image(systemName: "arrow.up.left.and.arrow.down.right")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.plain)
+        .help("Expand value")
+        .popover(
+            isPresented: Binding(
+                get: { expandedColumnName == name },
+                set: { if !$0 { expandedColumnName = nil } }
+            ),
+            arrowEdge: .leading
+        ) {
+            CellValueExpansionView(
+                columnName: name,
+                value: value,
+                dataType: dataType,
+                onDone: { expandedColumnName = nil }
+            )
+        }
     }
 
     @ViewBuilder

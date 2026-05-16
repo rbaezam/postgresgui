@@ -68,6 +68,14 @@ struct QueryResultsComponent: View {
     
     // Local state for sorting
     @State private var sortOrder: [TableRowComparator] = []
+
+    // Per-cell expansion popover state. Only one cell expanded at a time.
+    @State private var expandedCell: ExpandedCell? = nil
+
+    struct ExpandedCell: Equatable {
+        let rowID: UUID
+        let columnName: String
+    }
     
     private var hasPreviousPage: Bool {
         currentPage > 0
@@ -195,6 +203,30 @@ struct QueryResultsComponent: View {
                             .lineLimit(1)
                             .truncationMode(.tail)
                             .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                            .contextMenu {
+                                Button("Expand value") {
+                                    expandedCell = ExpandedCell(
+                                        rowID: row.id,
+                                        columnName: columnName
+                                    )
+                                }
+                            }
+                            .popover(
+                                isPresented: cellPopoverBinding(
+                                    rowID: row.id,
+                                    columnName: columnName
+                                ),
+                                arrowEdge: .trailing
+                            ) {
+                                CellValueExpansionView(
+                                    columnName: columnName,
+                                    value: row.values[columnName] ?? nil,
+                                    dataType: nil,
+                                    onDone: { expandedCell = nil }
+                                )
+                            }
                     }
                     .width(min: Constants.ColumnWidth.tableColumnMin)
                 }
@@ -228,6 +260,20 @@ struct QueryResultsComponent: View {
             }
         }
         .id(tableIdentity)
+    }
+
+    private func cellPopoverBinding(rowID: UUID, columnName: String) -> Binding<Bool> {
+        Binding(
+            get: {
+                expandedCell?.rowID == rowID && expandedCell?.columnName == columnName
+            },
+            set: { newValue in
+                if !newValue && expandedCell?.rowID == rowID
+                    && expandedCell?.columnName == columnName {
+                    expandedCell = nil
+                }
+            }
+        )
     }
 
     private var filteredResults: [TableRow] {
