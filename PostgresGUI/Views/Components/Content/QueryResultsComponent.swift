@@ -204,7 +204,11 @@ struct QueryResultsComponent: View {
                             .font(.system(.body, design: .monospaced))
                             .lineLimit(1)
                             .truncationMode(.tail)
-                            .textSelection(.enabled)
+                            // .textSelection deliberately omitted here:
+                            // it makes the Text behave like an NSTextField
+                            // and the system text-selection menu hijacks
+                            // the right-click before .contextMenu fires.
+                            // The Expand value popover provides selection.
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .contentShape(Rectangle())
                             .contextMenu {

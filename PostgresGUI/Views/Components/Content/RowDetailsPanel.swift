@@ -214,7 +214,8 @@ struct RowDetailsPanel: View {
     }
 
     private func columnInfoLookup() -> [String: ColumnInfo] {
-        guard let columns = appState.connection.selectedTable?.columnInfo else {
+        guard let table = appState.connection.selectedTable,
+              let columns = appState.connection.getColumnInfo(for: table) else {
             return [:]
         }
         var lookup: [String: ColumnInfo] = [:]

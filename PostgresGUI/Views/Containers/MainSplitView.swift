@@ -39,8 +39,10 @@ struct MainSplitView: View {
                     }
 
                     VSplitView {
-                        // Row 1: Query results
+                        // Row 1: Filters bar + Query results
                         VStack(spacing: 0) {
+                            ResultsHeaderBar()
+                            ResultFiltersBar()
                             if let viewModel = viewModel {
                                 QueryResultsView(
                                     searchText: searchText,
@@ -81,23 +83,6 @@ struct MainSplitView: View {
                 }
             }
             .toolbar {
-                if let connection = appState.connection.currentConnection {
-                    ToolbarItem(placement: .navigation) {
-                        HStack(spacing: 6) {
-                            if let tag = connection.colorTagEnum {
-                                Circle()
-                                    .fill(tag.swiftUIColor)
-                                    .frame(width: 10, height: 10)
-                            }
-                            Text(connection.displayName)
-                                .font(.system(size: 12, weight: .medium))
-                                .lineLimit(1)
-                            if connection.isReadOnly {
-                                ReadOnlyBadge()
-                            }
-                        }
-                    }
-                }
                 ToolbarItem(placement: .automatic) {
                     Button {
                         showRowInspector.toggle()

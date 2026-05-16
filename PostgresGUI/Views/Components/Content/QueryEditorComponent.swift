@@ -82,6 +82,8 @@ struct QueryEditorComponent: View {
             .padding(Constants.Spacing.small)
             .background(Color(NSColor.controlBackgroundColor))
 
+            Divider()
+
             // Syntax highlighted editor
             SyntaxHighlightedEditor(
                 text: $queryText,

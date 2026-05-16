@@ -54,7 +54,9 @@ struct QueryResultsView: View {
         QueryResultsComponent(
             results: appState.query.queryResults,
             columnNames: columnNames,
-            columnInfo: appState.connection.selectedTable?.columnInfo,
+            columnInfo: appState.connection.selectedTable.flatMap {
+                appState.connection.getColumnInfo(for: $0)
+            },
             searchText: searchText,
             isExecuting: isExecutingResultsLoad,
             errorMessage: appState.query.queryErrorMessage,
